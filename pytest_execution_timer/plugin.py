@@ -22,32 +22,32 @@ class PytestExecutionTimer:
     # https://docs.pytest.org/en/stable/reference.html#initialization-hooks
     @pytest.hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_sessionstart(self, session):
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations["pytest_sessionstart"] = end - start
 
     # === Collection Hooks ===
     # https://docs.pytest.org/en/stable/reference.html#collection-hooks
     @pytest.hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_collection(self, session):
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations["pytest_collection"] = end - start
 
     @pytest.hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_collect_file(self, path, parent):
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations[f"pytest_collect_file:{path}"] = end - start
 
     @pytest.hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_itemcollected(self, item):
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations[f"pytest_itemcollected\t{item.name}"] = end - start
 
     # === Run Test Hooks ===
@@ -56,9 +56,9 @@ class PytestExecutionTimer:
     def pytest_runtestloop(self, session):
         """Should mimic the output of the total test time reported by pytest.
         May not be necessary."""
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations["pytest_runtestloop"] = end - start
 
     # === Reporting Hooks ===
@@ -67,9 +67,9 @@ class PytestExecutionTimer:
     def pytest_make_collect_report(self, collector):
         """Despite being a Reporting hook, this fires during the Collection phase
         and can find `test_*.py` level import slowdowns."""
-        start = time.time()
+        start = time.perf_counter()
         yield
-        end = time.time()
+        end = time.perf_counter()
         self.durations[f"pytest_make_collect_report\t{collector.nodeid}"] = end - start
 
     def pytest_terminal_summary(self, terminalreporter, exitstatus, config):
@@ -84,6 +84,7 @@ class PytestExecutionTimer:
         for key, value in self.durations.items():
             # Only show items that took longer than the configured value
             if value > timedelta(milliseconds=min_duration).total_seconds():
+                value*=1000
                 terminalreporter.write_line(f"{value:.3f}\t{key}")
 
 
@@ -98,10 +99,10 @@ def pytest_addoption(parser):
     group.addoption(
         "--minimum-duration",
         action="store",
-        dest="minimum_duration_in_ms",
+        dest="minimum_duration_in_microseconds",
         type=int,
-        default=100,
-        help="Minimum duration in milliseconds to show in the report.",
+        default=1,
+        help="Minimum duration in microseconds to show in the report.",
     )
 
 
